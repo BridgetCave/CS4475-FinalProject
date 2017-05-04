@@ -19,20 +19,19 @@ featureCascade = cv2.CascadeClassifier(cascPath)
 
 features = featureCascade.detectMultiScale(imgGrayscale, 1.1, 5, cv2.CASCADE_SCALE_IMAGE, (100, 100))
 
-# I. Creating the Poster Edges filter from Photoshop
-# http://stackoverflow.com/questions/11064454/adobe-photoshop-style-posterization-and-opencv
-# 1. Recreate the PosterizeFilter
-n = 8   # Number of levels of quantization
-indices = np.arange(0, 256)   # List of all colors
-divider = np.linspace(0, 255, n+1)[1] # we get a divider
-quantiz = np.int0(np.linspace(0, 255, n)) # we get quantization colors
-color_levels = np.clip(np.int0(indices/divider), 0, n-1) # color levels 0,1,2..
-palette = quantiz[color_levels] # Creating the palette
-postImg = palette[img]  # Applying palette on image
-postImg = cv2.convertScaleAbs(postImg) # Converting image back to uint8
-cv2.imwrite('postImg.jpg', postImg)
+# # http://stackoverflow.com/questions/11064454/adobe-photoshop-style-posterization-and-opencv
+# I. Creating the Posterize Filter from Photoshop
+n = 8 # I decided to use 8 for the number of levels of quantization
+allColors = np.arange(0, 256)
+divider = np.linspace(0, 255, n+1)[1]
+quantiz = np.int0(np.linspace(0, 255, n))
+color_levels = np.clip(np.int0(allColors/divider), 0, n-1)
+palette = quantiz[color_levels]
+postImg = palette[img]
+postImg = cv2.convertScaleAbs(postImg)
+cv2.imwrite('posterizedImg.jpg', postImg)
 
-# II. create halftone image
+# II. Create Halftone Image
 # http://stackoverflow.com/questions/10572274/halftone-images-in-python
 # 1. Convert to CMYK and split
 rbg_image = Image.open("postImg.jpg")
@@ -108,34 +107,26 @@ edgeFilterImg = cv2.GaussianBlur(imgGrayscale, (7, 7), 0)
 
 # http://www.pyimagesearch.com/2015/04/06/zero-parameter-automatic-canny-edge-detection-with-python-and-opencv/
 sigma = 0.33
-# compute the median of the single channel pixel intensities
 v = np.median(edgeFilterImg)
-
-# apply automatic Canny edge detection using the computed median
 lower = int(max(0, (1.0 - sigma) * v))
 upper = int(min(255, (1.0 + sigma) * v))
-# lower = 100
-# upper = 150
-
 edgeFilterImg = cv2.Canny(edgeFilterImg, lower, upper)
-# edgeFilterImg = cv2.Canny(edgeFilterImg, max_lowThreshold, max_lowThreshold * ratio, (21, 21))
-
-# http://docs.opencv.org/trunk/d9/d61/tutorial_py_morphological_ops.html
 for i in range(0, 3):
     edgeFilterImg = cv2.dilate(edgeFilterImg, (3, 3))
-
-# http://stackoverflow.com/questions/19580102/inverting-image-in-python-with-opencv
 inverseImg = (255 - edgeFilterImg)
 inverseImgColor = cv2.cvtColor(inverseImg, cv2.COLOR_GRAY2RGB)
+
 cv2.imwrite('inverseImgColor.jpg', inverseImgColor)
 new.save('halftoneImage.bmp')
 
-# posterEdges = cv2.addWeighted(postImg, 0.5, inverseImgColor, 0.5, 0)
 posterImg = cv2.imread('halftoneImage.bmp') * (inverseImgColor/255)
 
-# IV. Add Speech Bubble using feature detection
+# IV. Add Border
 posterImg = cv2.rectangle(posterImg, (0, 0), (posterImg.shape[1], posterImg.shape[0]), 0, 18)
 posterImg = cv2.rectangle(posterImg, (0, 0), (posterImg.shape[1], posterImg.shape[0]), (255, 255, 255), 8)
+
+# V. Add Speech Bubble using feature detection
+
 
 if len(features) > 0:
     (faceX, faceY, faceW, faceH) = features[0]
@@ -158,5 +149,7 @@ if len(features) > 0:
     posterImg = cv2.fillConvexPoly(posterImg, poly, (255, 255, 255))
     posterImg = cv2.ellipse(posterImg, ((ellipseX, ellipseY), (xAxis * 2, yAxis * 2), 0), (0, 0, 0), 4)
     posterImg = cv2.putText(posterImg, "WOW!!", (ellipseX - 80, ellipseY + 20), cv2.FONT_HERSHEY_PLAIN, 4, (0, 0, 0), 4)
+
+
 
 cv2.imwrite('FinalImage.jpg', posterImg)
